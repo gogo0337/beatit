@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Hit ME!</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{
+  background:#0f0f1a;
+  font-family:'Nunito',sans-serif;
+  min-height:100vh;
+  display:flex;align-items:center;justify-content:center;
+  overflow-x:hidden;
+}
+#wrap{
+  width:100%;max-width:420px;
+  min-height:100vh;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  gap:20px;padding:56px 20px 60px;
+  position:relative;
+}
+
+/* header */
+.app-title{
+  font-family:'Fredoka One',cursive;
+  font-size:32px;
+  background:linear-gradient(135deg,#e94560,#f5a623);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  letter-spacing:.02em;
+}
+
+/* donate toggle */
+.top-row{
+  position:absolute;top:16px;right:16px;
+  display:flex;align-items:center;gap:6px;
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:99px;padding:6px 12px 6px 9px;
+  cursor:pointer;user-select:none;
+  font-size:12px;font-weight:700;color:#666;
+  transition:all .2s;
+}
+.top-row.on{background:#fee500;border-color:#fee500;color:#3c1e1e}
+.top-row:active{transform:scale(.95)}
+.sw{width:26px;height:15px;background:rgba(255,255,255,.15);border-radius:99px;position:relative;transition:background .2s;flex-shrink:0}
+.sw::after{content:'';position:absolute;width:11px;height:11px;background:#fff;border-radius:50%;top:2px;left:2px;transition:transform .2s}
+.top-row.on .sw{background:rgba(0,0,0,.2)}
+.top-row.on .sw::after{transform:translateX(11px)}
+
+/* cat pills — single row, wrapping */
+.cat-wrap{width:100%;display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.cat-btn{
+  padding:5px 14px;border-radius:99px;
+  border:1.5px solid rgba(255,255,255,.1);
+  background:transparent;color:#555;
+  font-family:'Nunito',sans-serif;font-weight:700;font-size:12px;
+  cursor:pointer;transition:all .15s;white-space:nowrap;
+}
+.cat-btn.active{background:#e94560;border-color:#e94560;color:#fff}
+.cat-btn:active{transform:scale(.93)}
+
+/* sound info */
+.info{text-align:center;min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px}
+.info-cat{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#e94560}
+.info-name{font-family:'Fredoka One',cursive;font-size:26px;color:#eaeaea;line-height:1}
+
+/* push button */
+.btn-wrap{position:relative;display:flex;align-items:center;justify-content:center}
+.ripple-ring{
+  position:absolute;width:180px;height:180px;
+  border-radius:50%;border:2.5px solid #e94560;
+  opacity:0;pointer-events:none;
+}
+@keyframes rpl{0%{transform:scale(1);opacity:.6}100%{transform:scale(1.8);opacity:0}}
+.ripple-ring.go{animation:rpl .55s ease-out forwards}
+
+.btn-outer{
+  width:180px;height:180px;border-radius:50%;border:none;outline:none;
+  background:#1e1e30;
+  box-shadow:0 10px 0 #0a0a14,0 12px 20px rgba(0,0,0,.65);
+  cursor:pointer;
+  transition:transform .08s,box-shadow .08s;
+  display:flex;align-items:center;justify-content:center;
+}
+.btn-outer:active,.btn-outer.pressed{
+  transform:translateY(9px);
+  box-shadow:0 1px 0 #0a0a14,0 3px 8px rgba(0,0,0,.5);
+}
+.btn-face{
+  width:160px;height:160px;border-radius:50%;
+  background:radial-gradient(circle at 36% 30%,#2a2a45,#16162a);
+  border:2px solid rgba(255,255,255,.07);
+  display:flex;align-items:center;justify-content:center;
+  font-size:78px;line-height:1;pointer-events:none;
+  transition:transform .08s;
+}
+.btn-outer:active .btn-face,.btn-outer.pressed .btn-face{transform:scale(.94)}
+
+/* next btn */
+.next-btn{
+  background:transparent;
+  border:1.5px solid rgba(255,255,255,.12);
+  border-radius:99px;padding:9px 28px;
+  color:#555;font-family:'Nunito',sans-serif;font-weight:700;font-size:13px;
+  cursor:pointer;transition:all .15s;
+}
+.next-btn:hover{border-color:rgba(255,255,255,.25);color:#aaa}
+.next-btn:active{transform:scale(.95)}
+
+/* donate counter bar */
+.donate-status{
+  display:none;
+  align-items:center;justify-content:space-between;
+  width:100%;
+  background:#1a1a2e;border:1px solid rgba(254,229,0,.2);
+  border-radius:14px;padding:10px 16px;
+}
+.donate-status.visible{display:flex}
+.ds-left{display:flex;flex-direction:column;gap:2px}
+.ds-clicks{font-family:'Fredoka One',cursive;font-size:22px;color:#fee500;line-height:1}
+.ds-label{font-size:11px;font-weight:700;color:#666}
+.ds-amount{font-family:'Fredoka One',cursive;font-size:16px;color:#fee500}
+.send-btn{
+  background:#fee500;color:#3c1e1e;border:none;
+  border-radius:10px;padding:9px 16px;
+  font-family:'Fredoka One',cursive;font-size:14px;
+  cursor:pointer;white-space:nowrap;
+  transition:transform .1s,opacity .1s;flex-shrink:0;
+}
+.send-btn:active{transform:scale(.93);opacity:.85}
+
+/* modal overlay */
+.modal-bg{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,.75);
+  z-index:200;align-items:center;justify-content:center;
+  padding:24px;
+}
+.modal-bg.open{display:flex}
+.modal{
+  background:#1a1a2e;border:1px solid rgba(255,255,255,.1);
+  border-radius:20px;padding:28px 24px;width:100%;max-width:340px;
+  display:flex;flex-direction:column;align-items:center;gap:16px;
+  text-align:center;
+}
+.modal-icon{font-size:48px;line-height:1}
+.modal-title{font-family:'Fredoka One',cursive;font-size:22px;color:#eaeaea}
+.modal-desc{font-size:14px;font-weight:700;color:#888;line-height:1.6}
+.modal-account{
+  background:#0f0f1a;border:1px solid rgba(254,229,0,.3);
+  border-radius:12px;padding:14px 20px;width:100%;
+}
+.modal-account-name{font-family:'Fredoka One',cursive;font-size:18px;color:#fee500;margin-bottom:4px}
+.modal-account-num{font-size:13px;font-weight:700;color:#aaa;letter-spacing:.05em}
+.modal-agree{font-size:12px;color:#555;line-height:1.6}
+.modal-confirm{
+  width:100%;background:#e94560;color:#fff;border:none;
+  border-radius:12px;padding:14px;
+  font-family:'Fredoka One',cursive;font-size:18px;
+  cursor:pointer;transition:transform .1s,opacity .1s;
+}
+.modal-confirm:active{transform:scale(.97);opacity:.85}
+.modal-cancel{
+  background:transparent;border:none;
+  color:#555;font-family:'Nunito',sans-serif;font-weight:700;font-size:13px;
+  cursor:pointer;padding:4px;
+}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div class="top-row" id="tog" onclick="handleDonateToggle()">
+    <span style="font-size:15px">☕</span>
+    <span id="togLabel">후원하기</span>
+    <div class="sw"></div>
+  </div>
+
+  <div class="app-title">Hit ME!</div>
+
+  <div class="cat-wrap" id="catWrap"></div>
+
+  <div class="info">
+    <div class="info-cat" id="infoCat"></div>
+    <div class="info-name" id="infoName"></div>
+  </div>
+
+  <div class="btn-wrap">
+    <div class="ripple-ring" id="rippleRing"></div>
+    <button class="btn-outer" id="mainBtn">
+      <div class="btn-face" id="btnFace">🎵</div>
+    </button>
+  </div>
+
+  <button class="next-btn" onclick="nextSound()">▶&nbsp; 다음</button>
+
+  <div class="donate-status" id="donateStatus">
+    <div class="ds-left">
+      <div class="ds-clicks"><span id="clickCount">0</span>번 클릭</div>
+      <div class="ds-label">누적 후원금액</div>
+      <div class="ds-amount">₩<span id="totalAmount">0</span></div>
+    </div>
+    <button class="send-btn" onclick="sendDonation()">카카오페이<br>송금하기</button>
+  </div>
+</div>
+
+<!-- 후원 동의 모달 -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <div class="modal-icon">💛</div>
+    <div class="modal-title">후원하기</div>
+    <div class="modal-desc">버튼을 클릭할 때마다<br><strong style="color:#fee500">10원씩</strong> 후원됩니다</div>
+    <div class="modal-account">
+      <div class="modal-account-name">Martin Kim</div>
+      <div class="modal-account-num">카카오뱅크 · 후원 계좌</div>
+    </div>
+    <div class="modal-agree">
+      아래 동의 버튼을 누르면<br>
+      버튼 클릭 횟수 × 10원을<br>
+      카카오페이로 직접 송금하는 데 동의합니다.
+    </div>
+    <button class="modal-confirm" onclick="agreeAndEnable()">동의하고 후원 시작 ✓</button>
+    <button class="modal-cancel" onclick="cancelDonate()">취소</button>
+  </div>
+</div>
+
+<script>
+const SOUNDS = [
+  {name:"8-bit 점프",cat:"레트로",e:"🕹️",fn:c=>{let g=c.createGain();g.gain.setValueAtTime(.4,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.3);g.connect(c.destination);let o=c.createOscillator();o.type="square";o.frequency.setValueAtTime(220,c.currentTime);o.frequency.exponentialRampToValueAtTime(880,c.currentTime+.15);o.frequency.exponentialRampToValueAtTime(440,c.currentTime+.3);o.connect(g);o.start();o.stop(c.currentTime+.3)}},
+  {name:"코인",cat:"레트로",e:"🪙",fn:c=>{[523,659,784,1047].forEach((f,i)=>{let g=c.createGain();g.gain.setValueAtTime(.3,c.currentTime+i*.07);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+i*.07+.15);g.connect(c.destination);let o=c.createOscillator();o.type="square";o.frequency.value=f;o.connect(g);o.start(c.currentTime+i*.07);o.stop(c.currentTime+i*.07+.15)})}},
+  {name:"레이저",cat:"레트로",e:"⚡",fn:c=>{let g=c.createGain();g.gain.setValueAtTime(.3,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.4);g.connect(c.destination);let o=c.createOscillator();o.type="sawtooth";o.frequency.setValueAtTime(1800,c.currentTime);o.frequency.exponentialRampToValueAtTime(200,c.currentTime+.4);o.connect(g);o.start();o.stop(c.currentTime+.4)}},
+  {name:"파워업",cat:"레트로",e:"⭐",fn:c=>{[220,277,330,440,554,659,880].forEach((f,i)=>{let g=c.createGain();g.gain.setValueAtTime(.25,c.currentTime+i*.06);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+i*.06+.1);g.connect(c.destination);let o=c.createOscillator();o.type="square";o.frequency.value=f;o.connect(g);o.start(c.currentTime+i*.06);o.stop(c.currentTime+i*.06+.1)})}},
+  {name:"게임오버",cat:"레트로",e:"💀",fn:c=>{[440,330,220,110].forEach((f,i)=>{let g=c.createGain();g.gain.setValueAtTime(.4,c.currentTime+i*.12);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+i*.12+.25);g.connect(c.destination);let o=c.createOscillator();o.type="square";o.frequency.value=f;o.connect(g);o.start(c.currentTime+i*.12);o.stop(c.currentTime+i*.12+.25)})}},
+  {name:"워프",cat:"레트로",e:"🌀",fn:c=>{let g=c.createGain();g.gain.setValueAtTime(.3,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.6);g.connect(c.destination);let o=c.createOscillator();o.type="sine";o.frequency.setValueAtTime(100,c.currentTime);o.frequency.exponentialRampToValueAtTime(2000,c.currentTime+.3);o.frequency.exponentialRampToValueAtTime(100,c.currentTime+.6);o.connect(g);o.start();o.stop(c.currentTime+.6)}},
+  {name:"1UP",cat:"레트로",e:"🍄",fn:c=>{[523,659,784,1047,1319].forEach((f,i)=>{let g=c.createGain();g.gain.setValueAtTime(.3,c.currentTime+i*.08);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+i*.08+.12);g.connect(c.destination);let o=c.createOscillator();o.type="square";o.frequency.value=f;o.connect(g);o.start(c.currentTime+i*.08);o.stop(c.currentTime+i*.08+.12)})}},
+  {name:"폭발",cat:"액션",e:"💥",fn:c=>{let g=c.createGain();g.gain.setValueAtTime(1,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.8);g.connect(c.destination);let b=c.createBuffer(1,c.sampleRate*.8,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,.5);let s=c.createBufferSource();s.buffer=b;let f=c.createBiquadFilter();f.type="lowpass";f.frequency.value=400;s.connect(f);f.connect(g);s.start()}},
+  {name:"총소리",cat:"액션",e:"🎯",fn:c=>{let g=c.createGain();g.gain.setValueAtTime(.8,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.3);g.connect(c.destination);let b=c.createBuffer(1,c.sampleRate*.3,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,2);let s=c.createBufferSource();s.buffer=b;let f=c.createBiquadFilter();f.type="bandpass";f.frequency.value=800;f.Q.value=.5;s.connect(f);f.connect(g);s.start()}},
+  {name:"번개",cat:"액션",e:"🌩️",fn:c=>{let g=c.createGain();g.gain.setValueAtTime(.6,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.6);g.connect(c.destination);let o=c.createOscillator();o.type="sawtooth";o.frequency.setValueAtTime(60,c.currentTime);o.frequency.exponentialRampToValueAtTime(30,c.currentTime+.6);let f=c.createBiquadFilter();f.type="lowpass";f.frequency.setValueAtTime(2000,c.currentTime);f.frequency.exponentialRampToValueAtTime(100,c.currentTime+.6);o.connect(f);f.connect(g);o.start();o.stop(c.currentTime+.6)}},
+  {name:"로켓",cat:"액션",e:"🚀",fn:c=>{let g=c.createGain();g.gain.setValueAtTime(0,c.currentTime);g.gain.linearRampToValueAtTime(.5,c.currentTime+.2);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+1);g.connect(c.destination);let b=c.createBuffer(1,c.sampleRate,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;let s=c.createBufferSource();s.buffer=b;let f=c.createBiquadFilter();f.type="bandpass";f.frequency.value=200;f.Q.value=.3;s.connect(f);f.connect(g);s.start()}},
+  {name:"충돌",cat:"액션",e:"💢",fn:c=>{let g=c.createGain();g.gain.setValueAtTime(.9,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.25);g.connect(c.destination);let b=c.createBuffer(1,c.sampleRate*.25,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1);let s=c.createBufferSource();s.buffer=b;let f=c.createBiquadFilter();f.type="lowpass";f.frequency.value=600;s.connect(f);f.connect(g);s.start()}},
+  {name:"빗소리",cat:"자연",e:"🌧️",fn:c=>{let g=c.createGain();g.gain.setValueAtTime(0,c.currentTime);g.gain.linearRampToValueAtTime(.15,c.currentTime+.1);g.gain.setValueAtTime(.15,c.currentTime+.8);g.gain.linearRampToValueAtTime(0,c.currentTime+1);g.connect(c.destination);let b=c.createBuffer(1,c.sampleRate,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;let s=c.createBufferSource();s.buffer=b;s.loop=true;let f=c.createBiquadFilter();f.type="bandpass";f.frequency.value=4000;f.Q.value=.5;s.connect(f);f.connect(g);s.start();s.stop(c.currentTime+1)}},
+  {name:"천둥",cat:"자연",e:"⛈️",fn:c=>{let g=c.createGain();g.gain.setValueAtTime(0,c.currentTime);g.gain.linearRampToValueAtTime(.9,c.currentTime+.05);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+1.5);g.connect(c.destination);let b=c.createBuffer(1,c.sampleRate*1.5,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,.3);let s=c.createBufferSource();s.buffer=b;let f=c.createBiquadFilter();f.type="lowpass";f.frequency.value=300;s.connect(f);f.connect(g);s.start()}},
+  {name:"파도",cat:"자연",e:"🌊",fn:c=>{let g=c.createGain();g.gain.setValueAtTime(0,c.currentTime);g.gain.linearRampToValueAtTime(.2,c.currentTime+.5);g.gain.setValueAtTime(.2,c.currentTime+1);g.gain.linearRampToValueAtTime(0,c.currentTime+1.5);g.connect(c.destination);let b=c.createBuffer(1,c.sampleRate*1.5,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++){let t=i/c.sampleRate;d[i]=(Math.random()*2-1)*.5*(1+Math.sin(t*2))*.5}let s=c.createBufferSource();s.buffer=b;let f=c.createBiquadFilter();f.type="lowpass";f.frequency.value=800;s.connect(f);f.connect(g);s.start()}},
+  {name:"새소리",cat:"자연",e:"🐦",fn:c=>{[[880,1.2,0],[1046,1.35,.15],[784,1.1,.3]].forEach(([f,r,d])=>{let g=c.createGain();g.gain.setValueAtTime(.15,c.currentTime+d);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+d+.2);g.connect(c.destination);let o=c.createOscillator();o.type="sine";o.frequency.setValueAtTime(f,c.currentTime+d);o.frequency.exponentialRampToValueAtTime(f*r,c.currentTime+d+.1);o.frequency.exponentialRampToValueAtTime(f,c.currentTime+d+.2);o.connect(g);o.start(c.currentTime+d);o.stop(c.currentTime+d+.2)})}},
+  {name:"바람",cat:"자연",e:"💨",fn:c=>{let g=c.createGain();g.gain.setValueAtTime(0,c.currentTime);g.gain.linearRampToValueAtTime(.12,c.currentTime+.3);g.gain.linearRampToValueAtTime(0,c.currentTime+1.2);g.connect(c.destination);let b=c.createBuffer(1,c.sampleRate*1.2,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;let s=c.createBufferSource();s.buffer=b;let f=c.createBiquadFilter();f.type="bandpass";f.frequency.value=600;f.Q.value=.3;s.connect(f);f.connect(g);s.start()}},
+  {name:"모닥불",cat:"자연",e:"🔥",fn:c=>{let g=c.createGain();g.gain.setValueAtTime(0,c.currentTime);g.gain.linearRampToValueAtTime(.1,c.currentTime+.2);g.gain.setValueAtTime(.1,c.currentTime+.9);g.gain.linearRampToValueAtTime(0,c.currentTime+1.2);g.connect(c.destination);let b=c.createBuffer(1,c.sampleRate*1.2,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;let s=c.createBufferSource();s.buffer=b;let f=c.createBiquadFilter();f.type="lowpass";f.frequency.value=1500;s.connect(f);f.connect(g);s.start()}},
+  {name:"삐~ 경고",cat:"유머",e:"🚨",fn:c=>{let g=c.createGain();g.gain.setValueAtTime(.3,c.currentTime);g.gain.setValueAtTime(.3,c.currentTime+.4);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.45);g.connect(c.destination);let o=c.createOscillator();o.type="sine";o.frequency.value=1000;o.connect(g);o.start();o.stop(c.currentTime+.45)}},
+  {name:"뿅",cat:"유머",e:"🤪",fn:c=>{let g=c.createGain();g.gain.setValueAtTime(.4,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.3);g.connect(c.destination);let o=c.createOscillator();o.type="sine";o.frequency.setValueAtTime(400,c.currentTime);o.frequency.exponentialRampToValueAtTime(100,c.currentTime+.3);o.connect(g);o.start();o.stop(c.currentTime+.3)}},
+  {name:"실패",cat:"유머",e:"😭",fn:c=>{[392,349,330,294].forEach((f,i)=>{let g=c.createGain();g.gain.setValueAtTime(.35,c.currentTime+i*.1);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+i*.1+.12);g.connect(c.destination);let o=c.createOscillator();o.type="sawtooth";o.frequency.value=f;o.connect(g);o.start(c.currentTime+i*.1);o.stop(c.currentTime+i*.1+.12)})}},
+  {name:"박수",cat:"유머",e:"👏",fn:c=>{for(let k=0;k<3;k++){let g=c.createGain();g.gain.setValueAtTime(.5,c.currentTime+k*.18);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+k*.18+.1);g.connect(c.destination);let b=c.createBuffer(1,c.sampleRate*.1,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,2);let s=c.createBufferSource();s.buffer=b;let f=c.createBiquadFilter();f.type="bandpass";f.frequency.value=1200;s.connect(f);f.connect(g);s.start(c.currentTime+k*.18)}}},
+  {name:"경적",cat:"유머",e:"📯",fn:c=>{let g=c.createGain();g.gain.setValueAtTime(.4,c.currentTime);g.gain.setValueAtTime(.4,c.currentTime+.4);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.5);g.connect(c.destination);[262,330,392].forEach(f=>{let o=c.createOscillator();o.type="sawtooth";o.frequency.value=f;o.connect(g);o.start();o.stop(c.currentTime+.5)})}},
+  {name:"방귀",cat:"유머",e:"💩",fn:c=>{let g=c.createGain();g.gain.setValueAtTime(.5,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.4);g.connect(c.destination);let o=c.createOscillator();o.type="sawtooth";o.frequency.setValueAtTime(80,c.currentTime);o.frequency.exponentialRampToValueAtTime(40,c.currentTime+.4);let f=c.createBiquadFilter();f.type="lowpass";f.frequency.value=300;o.connect(f);f.connect(g);o.start();o.stop(c.currentTime+.4)}},
+  {name:"피아노",cat:"악기",e:"🎹",fn:c=>{let g=c.createGain();g.gain.setValueAtTime(.5,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+1.2);g.connect(c.destination);[261.6,523.2,784.9].forEach((f,i)=>{let o=c.createOscillator();o.type="sine";o.frequency.value=f;let og=c.createGain();og.gain.value=[1,.5,.25][i];o.connect(og);og.connect(g);o.start();o.stop(c.currentTime+1.2)})}},
+  {name:"드럼 킥",cat:"악기",e:"🥁",fn:c=>{let g=c.createGain();g.gain.setValueAtTime(1,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.4);g.connect(c.destination);let o=c.createOscillator();o.type="sine";o.frequency.setValueAtTime(150,c.currentTime);o.frequency.exponentialRampToValueAtTime(40,c.currentTime+.15);o.connect(g);o.start();o.stop(c.currentTime+.4)}},
+  {name:"기타 리프",cat:"악기",e:"🎸",fn:c=>{[220,293,330,370,330,293].forEach((f,i)=>{let g=c.createGain();g.gain.setValueAtTime(.3,c.currentTime+i*.1);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+i*.1+.18);g.connect(c.destination);let o=c.createOscillator();o.type="sawtooth";o.frequency.value=f;let f2=c.createBiquadFilter();f2.type="lowpass";f2.frequency.value=2000;o.connect(f2);f2.connect(g);o.start(c.currentTime+i*.1);o.stop(c.currentTime+i*.1+.18)})}},
+  {name:"트럼펫",cat:"악기",e:"🎺",fn:c=>{let g=c.createGain();g.gain.setValueAtTime(0,c.currentTime);g.gain.linearRampToValueAtTime(.4,c.currentTime+.05);g.gain.setValueAtTime(.4,c.currentTime+.4);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.55);g.connect(c.destination);[523,659,784].forEach((f,i)=>{let o=c.createOscillator();o.type="sawtooth";o.frequency.value=f;let og=c.createGain();og.gain.value=[1,.4,.2][i];o.connect(og);og.connect(g);o.start();o.stop(c.currentTime+.55)})}},
+  {name:"개 짖음",cat:"동물",e:"🐶",fn:c=>{[[200,150,0],[220,160,.35]].forEach(([s,e,d])=>{let g=c.createGain();g.gain.setValueAtTime(0,c.currentTime+d);g.gain.linearRampToValueAtTime(.5,c.currentTime+d+.05);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+d+.25);g.connect(c.destination);let o=c.createOscillator();o.type="sawtooth";o.frequency.setValueAtTime(s,c.currentTime+d);o.frequency.exponentialRampToValueAtTime(e,c.currentTime+d+.25);let f=c.createBiquadFilter();f.type="bandpass";f.frequency.value=600;f.Q.value=2;o.connect(f);f.connect(g);o.start(c.currentTime+d);o.stop(c.currentTime+d+.25)})}},
+  {name:"고양이",cat:"동물",e:"🐱",fn:c=>{let g=c.createGain();g.gain.setValueAtTime(.2,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.7);g.connect(c.destination);let o=c.createOscillator();o.type="sine";o.frequency.setValueAtTime(700,c.currentTime);o.frequency.exponentialRampToValueAtTime(900,c.currentTime+.2);o.frequency.exponentialRampToValueAtTime(650,c.currentTime+.5);o.connect(g);o.start();o.stop(c.currentTime+.7)}},
+  {name:"개구리",cat:"동물",e:"🐸",fn:c=>{for(let k=0;k<2;k++){let g=c.createGain();g.gain.setValueAtTime(.3,c.currentTime+k*.2);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+k*.2+.1);g.connect(c.destination);let o=c.createOscillator();o.type="square";o.frequency.setValueAtTime(300,c.currentTime+k*.2);o.frequency.exponentialRampToValueAtTime(180,c.currentTime+k*.2+.1);o.connect(g);o.start(c.currentTime+k*.2);o.stop(c.currentTime+k*.2+.1)}}},
+  {name:"올빼미",cat:"동물",e:"🦉",fn:c=>{[[350,320,0],[350,320,.4]].forEach(([s,e,d])=>{let g=c.createGain();g.gain.setValueAtTime(0,c.currentTime+d);g.gain.linearRampToValueAtTime(.2,c.currentTime+d+.05);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+d+.25);g.connect(c.destination);let o=c.createOscillator();o.type="sine";o.frequency.setValueAtTime(s,c.currentTime+d);o.frequency.exponentialRampToValueAtTime(e,c.currentTime+d+.25);o.connect(g);o.start(c.currentTime+d);o.stop(c.currentTime+d+.25)})}},
+  {name:"UFO",cat:"SF",e:"🛸",fn:c=>{let g=c.createGain();g.gain.setValueAtTime(.2,c.currentTime);g.gain.linearRampToValueAtTime(0,c.currentTime+1);g.connect(c.destination);let o=c.createOscillator();o.type="sine";o.frequency.setValueAtTime(400,c.currentTime);let lfo=c.createOscillator();let lg=c.createGain();lg.gain.value=50;lfo.frequency.value=5;lfo.connect(lg);lg.connect(o.frequency);o.connect(g);lfo.start();o.start();lfo.stop(c.currentTime+1);o.stop(c.currentTime+1)}},
+  {name:"포털",cat:"SF",e:"🌌",fn:c=>{let g=c.createGain();g.gain.setValueAtTime(0,c.currentTime);g.gain.linearRampToValueAtTime(.4,c.currentTime+.2);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+1.5);g.connect(c.destination);let o=c.createOscillator();o.type="sine";o.frequency.setValueAtTime(200,c.currentTime);o.frequency.exponentialRampToValueAtTime(800,c.currentTime+.4);o.frequency.exponentialRampToValueAtTime(200,c.currentTime+1.5);let f=c.createBiquadFilter();f.type="lowpass";f.frequency.value=1000;o.connect(f);f.connect(g);o.start();o.stop(c.currentTime+1.5)}},
+  {name:"로봇",cat:"SF",e:"🤖",fn:c=>{[100,150,200,150,100].forEach((f,i)=>{let g=c.createGain();g.gain.setValueAtTime(.3,c.currentTime+i*.1);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+i*.1+.12);g.connect(c.destination);let o=c.createOscillator();o.type="square";o.frequency.value=f;o.connect(g);o.start(c.currentTime+i*.1);o.stop(c.currentTime+i*.1+.12)})}},
+  {name:"알림",cat:"UI",e:"🔔",fn:c=>{[880,1108].forEach((f,i)=>{let g=c.createGain();g.gain.setValueAtTime(.25,c.currentTime+i*.12);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+i*.12+.3);g.connect(c.destination);let o=c.createOscillator();o.type="sine";o.frequency.value=f;o.connect(g);o.start(c.currentTime+i*.12);o.stop(c.currentTime+i*.12+.3)})}},
+  {name:"성공",cat:"UI",e:"✅",fn:c=>{[523,659,784,1047].forEach((f,i)=>{let g=c.createGain();g.gain.setValueAtTime(.2,c.currentTime+i*.08);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+i*.08+.15);g.connect(c.destination);let o=c.createOscillator();o.type="sine";o.frequency.value=f;o.connect(g);o.start(c.currentTime+i*.08);o.stop(c.currentTime+i*.08+.15)})}},
+  {name:"에러",cat:"UI",e:"❌",fn:c=>{[300,250].forEach((f,i)=>{let g=c.createGain();g.gain.setValueAtTime(.3,c.currentTime+i*.15);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+i*.15+.2);g.connect(c.destination);let o=c.createOscillator();o.type="sawtooth";o.frequency.value=f;o.connect(g);o.start(c.currentTime+i*.15);o.stop(c.currentTime+i*.15+.2)})}},
+  {name:"클릭",cat:"UI",e:"🖱️",fn:c=>{let g=c.createGain();g.gain.setValueAtTime(.3,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.06);g.connect(c.destination);let b=c.createBuffer(1,c.sampleRate*.06,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,5);let s=c.createBufferSource();s.buffer=b;s.connect(g);s.start()}},
+  {name:"Bruh",cat:"밈",e:"😐",fn:c=>{let g=c.createGain();g.gain.setValueAtTime(.4,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.5);g.connect(c.destination);let o=c.createOscillator();o.type="sawtooth";o.frequency.setValueAtTime(130,c.currentTime);o.frequency.exponentialRampToValueAtTime(80,c.currentTime+.5);let f=c.createBiquadFilter();f.type="lowpass";f.frequency.value=500;o.connect(f);f.connect(g);o.start();o.stop(c.currentTime+.5)}},
+  {name:"Oof",cat:"밈",e:"😬",fn:c=>{[300,200,150].forEach((f,i)=>{let g=c.createGain();g.gain.setValueAtTime(.35,c.currentTime+i*.08);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+i*.08+.1);g.connect(c.destination);let o=c.createOscillator();o.type="sawtooth";o.frequency.value=f;o.connect(g);o.start(c.currentTime+i*.08);o.stop(c.currentTime+i*.08+.1)})}},
+  {name:"Ta-da!",cat:"밈",e:"🎉",fn:c=>{[523,659,784,1047,784,1047,1319].forEach((f,i)=>{let g=c.createGain();g.gain.setValueAtTime(.3,c.currentTime+i*.07);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+i*.07+.12);g.connect(c.destination);let o=c.createOscillator();o.type="sine";o.frequency.value=f;o.connect(g);o.start(c.currentTime+i*.07);o.stop(c.currentTime+i*.07+.12)})}},
+  {name:"Sad Trombone",cat:"밈",e:"🥺",fn:c=>{[466,440,415,392,370,349].forEach((f,i)=>{let g=c.createGain();g.gain.setValueAtTime(.35,c.currentTime+i*.12);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+i*.12+.18);g.connect(c.destination);let o=c.createOscillator();o.type="sawtooth";o.frequency.value=f;let f2=c.createBiquadFilter();f2.type="lowpass";f2.frequency.value=800;o.connect(f2);f2.connect(g);o.start(c.currentTime+i*.12);o.stop(c.currentTime+i*.12+.18)})}},
+  {name:"Windows XP",cat:"밈",e:"🖥️",fn:c=>{[1047,1319,1047,784,880,1047].forEach((f,i)=>{let g=c.createGain();g.gain.setValueAtTime(.25,c.currentTime+i*.1);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+i*.1+.15);g.connect(c.destination);let o=c.createOscillator();o.type="sine";o.frequency.value=f;o.connect(g);o.start(c.currentTime+i*.1);o.stop(c.currentTime+i*.1+.15)})}},
+  {name:"빠라빠빠",cat:"밈",e:"🍟",fn:c=>{[392,440,392,330,349,392].forEach((f,i)=>{let g=c.createGain();g.gain.setValueAtTime(.3,c.currentTime+i*.1);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+i*.1+.14);g.connect(c.destination);let o=c.createOscillator();o.type="sine";o.frequency.value=f;o.connect(g);o.start(c.currentTime+i*.1);o.stop(c.currentTime+i*.1+.14)})}},
+  {name:"なんでやねん",cat:"밈",e:"🤦",fn:c=>{[440,330,220,330,440].forEach((f,i)=>{let g=c.createGain();g.gain.setValueAtTime(.3,c.currentTime+i*.09);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+i*.09+.12);g.connect(c.destination);let o=c.createOscillator();o.type="square";o.frequency.value=f;o.connect(g);o.start(c.currentTime+i*.09);o.stop(c.currentTime+i*.09+.12)})}},
+  {name:"Nyan Cat",cat:"밈",e:"🌈",fn:c=>{[784,880,988,880,784,659,698,784].forEach((f,i)=>{let g=c.createGain();g.gain.setValueAtTime(.2,c.currentTime+i*.1);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+i*.1+.12);g.connect(c.destination);let o=c.createOscillator();o.type="square";o.frequency.value=f;o.connect(g);o.start(c.currentTime+i*.1);o.stop(c.currentTime+i*.1+.12)})}},
+  {name:"어이쿠",cat:"밈",e:"🙈",fn:c=>{[600,500,400,350].forEach((f,i)=>{let g=c.createGain();g.gain.setValueAtTime(.3,c.currentTime+i*.08);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+i*.08+.1);g.connect(c.destination);let o=c.createOscillator();o.type="sawtooth";o.frequency.value=f;o.connect(g);o.start(c.currentTime+i*.08);o.stop(c.currentTime+i*.08+.1)})}},
+];
+
+const KAKAO_LINK = 'https://qr.kakaopay.com/Fa8v84E3c';
+
+let ctx = null;
+let filtered = [...SOUNDS];
+let filterCat = null;
+let idx = 0;
+let donateOn = false;
+let donateAgreed = false;
+let clickCount = 0;
+
+function getCtx() {
+  if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+  if (ctx.state === 'suspended') ctx.resume();
+  return ctx;
+}
+
+function pickRandom(exclude) {
+  if (filtered.length === 1) return 0;
+  let next;
+  do { next = Math.floor(Math.random() * filtered.length); } while (next === exclude);
+  return next;
+}
+
+function render() {
+  const s = filtered[idx];
+  document.getElementById('btnFace').textContent = s.e;
+  document.getElementById('infoCat').textContent = s.cat;
+  document.getElementById('infoName').textContent = s.name;
+}
+
+function play() {
+  const s = filtered[idx];
+  if (!s) return;
+  s.fn(getCtx());
+  if (navigator.vibrate) navigator.vibrate(25);
+  const ring = document.getElementById('rippleRing');
+  ring.classList.remove('go'); void ring.offsetWidth; ring.classList.add('go');
+  const btn = document.getElementById('mainBtn');
+  btn.classList.add('pressed');
+  setTimeout(() => btn.classList.remove('pressed'), 120);
+  if (donateOn && donateAgreed) {
+    clickCount++;
+    document.getElementById('clickCount').textContent = clickCount;
+    document.getElementById('totalAmount').textContent = (clickCount * 10).toLocaleString();
+  }
+}
+
+function nextSound() {
+  idx = pickRandom(idx);
+  render();
+}
+
+function buildCats() {
+  const cats = ['전체', ...new Set(SOUNDS.map(s => s.cat))];
+  const wrap = document.getElementById('catWrap');
+  wrap.innerHTML = '';
+  cats.forEach(cat => {
+    const b = document.createElement('button');
+    b.className = 'cat-btn' + (cat === (filterCat || '전체') ? ' active' : '');
+    b.textContent = cat;
+    b.onclick = () => {
+      filterCat = cat === '전체' ? null : cat;
+      filtered = filterCat ? SOUNDS.filter(s => s.cat === filterCat) : [...SOUNDS];
+      idx = Math.floor(Math.random() * filtered.length);
+      buildCats(); render();
+    };
+    wrap.appendChild(b);
+  });
+}
+
+function handleDonateToggle() {
+  if (donateOn) {
+    donateOn = false;
+    document.getElementById('tog').classList.remove('on');
+    document.getElementById('togLabel').textContent = '후원하기';
+    document.getElementById('donateStatus').classList.remove('visible');
+  } else {
+    if (!donateAgreed) {
+      document.getElementById('modalBg').classList.add('open');
+    } else {
+      enableDonate();
+    }
+  }
+}
+
+function agreeAndEnable() {
+  donateAgreed = true;
+  document.getElementById('modalBg').classList.remove('open');
+  enableDonate();
+}
+
+function enableDonate() {
+  donateOn = true;
+  document.getElementById('tog').classList.add('on');
+  document.getElementById('togLabel').textContent = 'ON';
+  document.getElementById('donateStatus').classList.add('visible');
+}
+
+function cancelDonate() {
+  document.getElementById('modalBg').classList.remove('open');
+}
+
+function sendDonation() {
+  if (clickCount === 0) {
+    alert('아직 클릭한 횟수가 없어요!\n버튼을 눌러보세요 😊');
+    return;
+  }
+  const amount = clickCount * 10;
+  const msg = `누적 ${clickCount}번 클릭 = ₩${amount.toLocaleString()}\n카카오페이로 이동합니다!`;
+  if (confirm(msg)) {
+    window.open(KAKAO_LINK, '_blank');
+    clickCount = 0;
+    document.getElementById('clickCount').textContent = 0;
+    document.getElementById('totalAmount').textContent = 0;
+  }
+}
+
+document.getElementById('mainBtn').addEventListener('click', play);
+
+idx = Math.floor(Math.random() * SOUNDS.length);
+buildCats();
+render();
+</script>
+</body>
+</html>
