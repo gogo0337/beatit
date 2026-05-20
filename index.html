@@ -44,6 +44,7 @@ body{background:#0f0f1a;font-family:'Nunito',sans-serif;min-height:100vh;display
 .ds-amount{font-family:'Fredoka One',cursive;font-size:16px;color:#fee500}
 .send-btn{background:#fee500;color:#3c1e1e;border:none;border-radius:10px;padding:9px 16px;font-family:'Fredoka One',cursive;font-size:14px;cursor:pointer;white-space:nowrap;transition:transform .1s,opacity .1s;flex-shrink:0}
 .send-btn:active{transform:scale(.93);opacity:.85}
+/* 동의 모달 */
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:200;align-items:center;justify-content:center;padding:24px}
 .modal-bg.open{display:flex}
 .modal{background:#1a1a2e;border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:28px 24px;width:100%;max-width:340px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
@@ -57,6 +58,7 @@ body{background:#0f0f1a;font-family:'Nunito',sans-serif;min-height:100vh;display
 .modal-confirm{width:100%;background:#e94560;color:#fff;border:none;border-radius:12px;padding:14px;font-family:'Fredoka One',cursive;font-size:18px;cursor:pointer;transition:transform .1s}
 .modal-confirm:active{transform:scale(.97)}
 .modal-cancel{background:transparent;border:none;color:#555;font-family:'Nunito',sans-serif;font-weight:700;font-size:13px;cursor:pointer;padding:4px}
+/* QR 모달 */
 .qr-modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:300;align-items:center;justify-content:center;padding:24px}
 .qr-modal-bg.open{display:flex}
 .qr-modal{background:#1a1a2e;border:1px solid rgba(254,229,0,.25);border-radius:20px;padding:28px 24px;width:100%;max-width:320px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
@@ -98,6 +100,8 @@ body{background:#0f0f1a;font-family:'Nunito',sans-serif;min-height:100vh;display
     <button class="send-btn" onclick="sendDonation()">카카오페이<br>송금하기</button>
   </div>
 </div>
+
+<!-- QR 모달 -->
 <div class="qr-modal-bg" id="qrModalBg" onclick="closeQR(event)">
   <div class="qr-modal">
     <div class="qr-title">카카오페이 송금</div>
@@ -108,6 +112,8 @@ body{background:#0f0f1a;font-family:'Nunito',sans-serif;min-height:100vh;display
     <button class="qr-close" onclick="closeQRBtn()">닫기</button>
   </div>
 </div>
+
+<!-- 동의 모달 -->
 <div class="modal-bg" id="modalBg">
   <div class="modal">
     <div class="modal-icon">💛</div>
@@ -122,7 +128,12 @@ body{background:#0f0f1a;font-family:'Nunito',sans-serif;min-height:100vh;display
     <button class="modal-cancel" onclick="cancelDonate()">취소</button>
   </div>
 </div>
+
+<!-- sounds.js 를 먼저 로드 (여기서 SOUNDS 배열 정의) -->
+<script src="sounds.js"></script>
+
 <script>
+// ── 오디오 헬퍼 ──────────────────────────────────────
 const $=id=>document.getElementById(id);
 function noise(c,dur,lp,vol=1){let g=c.createGain();g.gain.setValueAtTime(vol,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+dur);g.connect(c.destination);let b=c.createBuffer(1,c.sampleRate*dur,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;let s=c.createBufferSource();s.buffer=b;let f=c.createBiquadFilter();f.type='lowpass';f.frequency.value=lp;s.connect(f);f.connect(g);s.start()}
 function noiseEnv(c,dur,lp,atkT,susT,vol=1){let g=c.createGain();g.gain.setValueAtTime(0,c.currentTime);g.gain.linearRampToValueAtTime(vol,c.currentTime+atkT);g.gain.setValueAtTime(vol,c.currentTime+susT);g.gain.linearRampToValueAtTime(0,c.currentTime+dur);g.connect(c.destination);let b=c.createBuffer(1,c.sampleRate*dur,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;let s=c.createBufferSource();s.buffer=b;let f=c.createBiquadFilter();f.type='bandpass';f.frequency.value=lp;f.Q.value=.5;s.connect(f);f.connect(g);s.start()}
@@ -131,231 +142,79 @@ function sweep(c,type,f0,f1,dur,vol=.35){let g=c.createGain();g.gain.setValueAtT
 function chord(c,type,freqs,dur,vol=.25){freqs.forEach(f=>{let g=c.createGain();g.gain.setValueAtTime(vol/freqs.length*2,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+dur);g.connect(c.destination);let o=c.createOscillator();o.type=type;o.frequency.value=f;o.connect(g);o.start();o.stop(c.currentTime+dur)})}
 function melody(c,type,notes,vol=.3){notes.forEach(([f,d,t])=>{let g=c.createGain();g.gain.setValueAtTime(vol,c.currentTime+t);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+t+d);g.connect(c.destination);let o=c.createOscillator();o.type=type;o.frequency.value=f;o.connect(g);o.start(c.currentTime+t);o.stop(c.currentTime+t+d+.02)})}
 
-const SOUNDS=[
-// 레트로
-{name:'8-bit 점프',cat:'레트로',e:'🕹️',fn:c=>sweep(c,'square',220,880,.15,.4)},
-{name:'코인 획득',cat:'레트로',e:'🪙',fn:c=>osc(c,'square',[523,659,784,1047],.07,.3)},
-{name:'레이저 빔',cat:'레트로',e:'⚡',fn:c=>sweep(c,'sawtooth',1800,200,.4)},
-{name:'파워업',cat:'레트로',e:'⭐',fn:c=>osc(c,'square',[220,277,330,440,554,659,880],.06,.25)},
-{name:'게임오버',cat:'레트로',e:'💀',fn:c=>osc(c,'square',[440,330,220,110],.12,.4)},
-{name:'워프',cat:'레트로',e:'🌀',fn:c=>{sweep(c,'sine',100,2000,.3,.3);setTimeout(()=>sweep(c,'sine',2000,100,.3,.3),300)}},
-{name:'1UP',cat:'레트로',e:'🍄',fn:c=>osc(c,'square',[523,659,784,1047,1319],.08,.3)},
-{name:'무기 장착',cat:'레트로',e:'🔫',fn:c=>osc(c,'square',[200,400,600,800,600,400],.05,.2)},
-{name:'보스 등장',cat:'레트로',e:'👾',fn:c=>osc(c,'sawtooth',[110,146,165,110,131,110],.12,.4)},
-{name:'체력 회복',cat:'레트로',e:'❤️',fn:c=>osc(c,'sine',[523,784,1047,784,523],.08,.25)},
-{name:'타임오버',cat:'레트로',e:'⏰',fn:c=>osc(c,'square',[880,0,880,0,880,0,440],.1,.4)},
-{name:'스테이지 클리어',cat:'레트로',e:'🏆',fn:c=>melody(c,'square',[[523,.1,0],[659,.1,.1],[784,.1,.2],[1047,.3,.3]])},
-{name:'점프 착지',cat:'레트로',e:'🦘',fn:c=>sweep(c,'square',880,220,.1,.5)},
-{name:'비밀 발견',cat:'레트로',e:'🔍',fn:c=>melody(c,'sine',[[523,.1,0],[659,.1,.12],[784,.1,.24],[1047,.3,.38]])},
-{name:'픽셀 죽음',cat:'레트로',e:'☠️',fn:c=>{[440,415,392,370,349,330,311,294,277,261].forEach((f,i)=>{let g=c.createGain();g.gain.setValueAtTime(.3,c.currentTime+i*.05);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+i*.05+.08);g.connect(c.destination);let o=c.createOscillator();o.type='square';o.frequency.value=f;o.connect(g);o.start(c.currentTime+i*.05);o.stop(c.currentTime+i*.05+.08)})}},
-{name:'점멸',cat:'레트로',e:'💫',fn:c=>{for(let k=0;k<6;k++){let g=c.createGain();g.gain.setValueAtTime(.25,c.currentTime+k*.07);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+k*.07+.05);g.connect(c.destination);let o=c.createOscillator();o.type='square';o.frequency.value=k%2?880:440;o.connect(g);o.start(c.currentTime+k*.07);o.stop(c.currentTime+k*.07+.05)}}},
-{name:'슈팅',cat:'레트로',e:'🔆',fn:c=>sweep(c,'square',660,220,.18,.35)},
-{name:'경험치 업',cat:'레트로',e:'📈',fn:c=>melody(c,'square',[[330,.07,0],[392,.07,.08],[494,.07,.16],[659,.07,.24],[784,.15,.32]])},
-{name:'버튼 확인',cat:'레트로',e:'🔘',fn:c=>{let g=c.createGain();g.gain.setValueAtTime(.4,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.08);g.connect(c.destination);let o=c.createOscillator();o.type='square';o.frequency.value=660;o.connect(g);o.start();o.stop(c.currentTime+.08)}},
-{name:'카운터 증가',cat:'레트로',e:'🔢',fn:c=>sweep(c,'square',440,880,.1,.3)},
-// 액션
-{name:'폭발',cat:'액션',e:'💥',fn:c=>noise(c,.8,400,1)},
-{name:'총소리',cat:'액션',e:'🎯',fn:c=>{let g=c.createGain();g.gain.setValueAtTime(.8,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.3);g.connect(c.destination);let b=c.createBuffer(1,c.sampleRate*.3,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,2);let s=c.createBufferSource();s.buffer=b;let f=c.createBiquadFilter();f.type='bandpass';f.frequency.value=800;f.Q.value=.5;s.connect(f);f.connect(g);s.start()}},
-{name:'번개',cat:'액션',e:'🌩️',fn:c=>sweep(c,'sawtooth',60,30,.6,.6)},
-{name:'로켓 발사',cat:'액션',e:'🚀',fn:c=>noiseEnv(c,1,200,.2,.8,.5)},
-{name:'충돌',cat:'액션',e:'💢',fn:c=>noise(c,.25,600,.9)},
-{name:'칼 휘두르기',cat:'액션',e:'⚔️',fn:c=>{let g=c.createGain();g.gain.setValueAtTime(.3,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.25);g.connect(c.destination);let b=c.createBuffer(1,c.sampleRate*.25,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(i/d.length,.2)*Math.pow(1-i/d.length,3);let s=c.createBufferSource();s.buffer=b;let f=c.createBiquadFilter();f.type='highpass';f.frequency.value=2000;s.connect(f);f.connect(g);s.start()}},
-{name:'펀치',cat:'액션',e:'🥊',fn:c=>{let g=c.createGain();g.gain.setValueAtTime(.7,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.15);g.connect(c.destination);let b=c.createBuffer(1,c.sampleRate*.15,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,1.5);let s=c.createBufferSource();s.buffer=b;let f=c.createBiquadFilter();f.type='lowpass';f.frequency.value=1500;s.connect(f);f.connect(g);s.start()}},
-{name:'화살',cat:'액션',e:'🏹',fn:c=>{let g=c.createGain();g.gain.setValueAtTime(.2,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.2);g.connect(c.destination);let b=c.createBuffer(1,c.sampleRate*.2,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(i/d.length,.1)*Math.pow(1-i/d.length,4);let s=c.createBufferSource();s.buffer=b;let f=c.createBiquadFilter();f.type='highpass';f.frequency.value=3000;s.connect(f);f.connect(g);s.start()}},
-{name:'마법 시전',cat:'액션',e:'🪄',fn:c=>{sweep(c,'sine',400,2000,.4,.25);setTimeout(()=>noise(c,.3,6000,.3),200)}},
-{name:'전기 충격',cat:'액션',e:'⚡',fn:c=>{for(let k=0;k<4;k++)setTimeout(()=>noise(c,.08,8000,.5),k*60)}},
-{name:'화염방사',cat:'액션',e:'🔥',fn:c=>noiseEnv(c,1,2000,.1,.7,.25)},
-{name:'낙하',cat:'액션',e:'⬇️',fn:c=>sweep(c,'sawtooth',800,100,.5,.4)},
-{name:'스피드 부스트',cat:'액션',e:'💨',fn:c=>sweep(c,'sine',200,1600,.2,.3)},
-{name:'드릴',cat:'액션',e:'🔩',fn:c=>{let g=c.createGain();g.gain.setValueAtTime(.25,c.currentTime);g.gain.setValueAtTime(.25,c.currentTime+.8);g.gain.linearRampToValueAtTime(0,c.currentTime+1);g.connect(c.destination);let o=c.createOscillator();o.type='sawtooth';o.frequency.value=60;let lfo=c.createOscillator();let lg=c.createGain();lg.gain.value=30;lfo.frequency.value=40;lfo.connect(lg);lg.connect(o.frequency);o.connect(g);lfo.start();o.start();lfo.stop(c.currentTime+1);o.stop(c.currentTime+1)}},
-// 자연
-{name:'빗소리',cat:'자연',e:'🌧️',fn:c=>noiseEnv(c,1.2,4000,.1,.9,.15)},
-{name:'천둥',cat:'자연',e:'⛈️',fn:c=>noise(c,1.5,300,.9)},
-{name:'파도',cat:'자연',e:'🌊',fn:c=>noiseEnv(c,1.5,800,.5,1,.2)},
-{name:'새소리',cat:'자연',e:'🐦',fn:c=>{[[880,1.2,0],[1046,1.35,.15],[784,1.1,.3]].forEach(([f,r,d])=>{let g=c.createGain();g.gain.setValueAtTime(.15,c.currentTime+d);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+d+.2);g.connect(c.destination);let o=c.createOscillator();o.type='sine';o.frequency.setValueAtTime(f,c.currentTime+d);o.frequency.exponentialRampToValueAtTime(f*r,c.currentTime+d+.1);o.frequency.exponentialRampToValueAtTime(f,c.currentTime+d+.2);o.connect(g);o.start(c.currentTime+d);o.stop(c.currentTime+d+.2)})}},
-{name:'바람',cat:'자연',e:'💨',fn:c=>noiseEnv(c,1.2,600,.3,.7,.12)},
-{name:'모닥불',cat:'자연',e:'🔥',fn:c=>noiseEnv(c,1.2,1500,.2,.9,.1)},
-{name:'폭포',cat:'자연',e:'🏞️',fn:c=>noiseEnv(c,1.5,3000,.1,1.2,.2)},
-{name:'지진',cat:'자연',e:'🌍',fn:c=>{let g=c.createGain();g.gain.setValueAtTime(0,c.currentTime);g.gain.linearRampToValueAtTime(.6,c.currentTime+.3);g.gain.setValueAtTime(.6,c.currentTime+1);g.gain.linearRampToValueAtTime(0,c.currentTime+1.5);g.connect(c.destination);let o=c.createOscillator();o.type='sine';o.frequency.value=30;let lfo=c.createOscillator();let lg=c.createGain();lg.gain.value=10;lfo.frequency.value=6;lfo.connect(lg);lg.connect(o.frequency);let f=c.createBiquadFilter();f.type='lowpass';f.frequency.value=150;o.connect(f);f.connect(g);lfo.start();o.start();lfo.stop(c.currentTime+1.5);o.stop(c.currentTime+1.5)}},
-{name:'귀뚜라미',cat:'자연',e:'🦗',fn:c=>{for(let k=0;k<8;k++){let g=c.createGain();g.gain.setValueAtTime(.1,c.currentTime+k*.1);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+k*.1+.08);g.connect(c.destination);let o=c.createOscillator();o.type='sine';o.frequency.value=4200+Math.random()*300;o.connect(g);o.start(c.currentTime+k*.1);o.stop(c.currentTime+k*.1+.08)}}},
-{name:'눈보라',cat:'자연',e:'❄️',fn:c=>noiseEnv(c,1.5,2000,.3,1,.12)},
-{name:'우박',cat:'자연',e:'🌨️',fn:c=>{for(let k=0;k<12;k++)setTimeout(()=>{let g=c.createGain();g.gain.setValueAtTime(.3,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.06);g.connect(c.destination);let b=c.createBuffer(1,c.sampleRate*.06,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1);let s=c.createBufferSource();s.buffer=b;s.connect(g);s.start();},Math.random()*600)}},
-{name:'화산',cat:'자연',e:'🌋',fn:c=>noise(c,1.5,200,.8)},
-{name:'개울',cat:'자연',e:'🏞️',fn:c=>noiseEnv(c,1.5,5000,.2,1,.12)},
-{name:'낙엽',cat:'자연',e:'🍂',fn:c=>{for(let k=0;k<5;k++)setTimeout(()=>noiseEnv(c,.3,6000,.05,.2,.1),k*150)}},
-{name:'풀벌레',cat:'자연',e:'🌿',fn:c=>{for(let k=0;k<6;k++){let g=c.createGain();g.gain.setValueAtTime(.08,c.currentTime+k*.12);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+k*.12+.09);g.connect(c.destination);let o=c.createOscillator();o.type='sine';o.frequency.value=3800+k*100;o.connect(g);o.start(c.currentTime+k*.12);o.stop(c.currentTime+k*.12+.09)}}},
-// 유머
-{name:'삐~ 경고',cat:'유머',e:'🚨',fn:c=>{let g=c.createGain();g.gain.setValueAtTime(.3,c.currentTime);g.gain.setValueAtTime(.3,c.currentTime+.4);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.45);g.connect(c.destination);let o=c.createOscillator();o.type='sine';o.frequency.value=1000;o.connect(g);o.start();o.stop(c.currentTime+.45)}},
-{name:'뿅',cat:'유머',e:'🤪',fn:c=>sweep(c,'sine',400,100,.3,.4)},
-{name:'실패',cat:'유머',e:'😭',fn:c=>osc(c,'sawtooth',[392,349,330,294],.1,.35)},
-{name:'박수',cat:'유머',e:'👏',fn:c=>{for(let k=0;k<3;k++)setTimeout(()=>{let g=c.createGain();g.gain.setValueAtTime(.5,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.1);g.connect(c.destination);let b=c.createBuffer(1,c.sampleRate*.1,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,2);let s=c.createBufferSource();s.buffer=b;let f=c.createBiquadFilter();f.type='bandpass';f.frequency.value=1200;s.connect(f);f.connect(g);s.start();},k*180)}},
-{name:'경적',cat:'유머',e:'📯',fn:c=>chord(c,'sawtooth',[262,330,392],.5,.4)},
-{name:'방귀',cat:'유머',e:'💩',fn:c=>sweep(c,'sawtooth',80,40,.4,.5)},
-{name:'웃음',cat:'유머',e:'😂',fn:c=>osc(c,'sine',[350,370,390,410,390,370],.1,.2)},
-{name:'공포 비명',cat:'유머',e:'😱',fn:c=>sweep(c,'sawtooth',400,1600,.5,.3)},
-{name:'야유',cat:'유머',e:'👎',fn:c=>{noiseEnv(c,.8,3000,.05,.4,.2);osc(c,'sawtooth',[300,250,200],.1,.2)}},
-{name:'트림',cat:'유머',e:'🤢',fn:c=>{let g=c.createGain();g.gain.setValueAtTime(.4,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.6);g.connect(c.destination);let o=c.createOscillator();o.type='sawtooth';o.frequency.setValueAtTime(180,c.currentTime);let lfo=c.createOscillator();let lg=c.createGain();lg.gain.value=60;lfo.frequency.value=12;lfo.connect(lg);lg.connect(o.frequency);let f=c.createBiquadFilter();f.type='lowpass';f.frequency.value=600;o.connect(f);f.connect(g);lfo.start();o.start();lfo.stop(c.currentTime+.6);o.stop(c.currentTime+.6)}},
-{name:'기절',cat:'유머',e:'😵',fn:c=>sweep(c,'sine',600,80,.8,.3)},
-{name:'빠른 박수',cat:'유머',e:'🙌',fn:c=>{for(let k=0;k<8;k++)setTimeout(()=>{let g=c.createGain();g.gain.setValueAtTime(.3,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.06);g.connect(c.destination);let b=c.createBuffer(1,c.sampleRate*.06,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,2);let s=c.createBufferSource();s.buffer=b;let f=c.createBiquadFilter();f.type='bandpass';f.frequency.value=1200;s.connect(f);f.connect(g);s.start();},k*80)}},
-{name:'두근두근',cat:'유머',e:'💓',fn:c=>{for(let k=0;k<2;k++){let g=c.createGain();g.gain.setValueAtTime(0,c.currentTime+k*.35);g.gain.linearRampToValueAtTime(.6,c.currentTime+k*.35+.05);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+k*.35+.25);g.connect(c.destination);let o=c.createOscillator();o.type='sine';o.frequency.setValueAtTime(80,c.currentTime+k*.35);o.frequency.exponentialRampToValueAtTime(40,c.currentTime+k*.35+.25);o.connect(g);o.start(c.currentTime+k*.35);o.stop(c.currentTime+k*.35+.25)}}},
-{name:'미끄러짐',cat:'유머',e:'🫠',fn:c=>sweep(c,'sawtooth',600,100,.4,.4)},
-{name:'드르렁',cat:'유머',e:'😴',fn:c=>{let g=c.createGain();g.gain.setValueAtTime(0,c.currentTime);g.gain.linearRampToValueAtTime(.3,c.currentTime+.3);g.gain.setValueAtTime(.3,c.currentTime+.7);g.gain.linearRampToValueAtTime(0,c.currentTime+1);g.connect(c.destination);let o=c.createOscillator();o.type='sawtooth';o.frequency.value=120;let lfo=c.createOscillator();let lg=c.createGain();lg.gain.value=40;lfo.frequency.value=3;lfo.connect(lg);lg.connect(o.frequency);let f=c.createBiquadFilter();f.type='lowpass';f.frequency.value=400;o.connect(f);f.connect(g);lfo.start();o.start();lfo.stop(c.currentTime+1);o.stop(c.currentTime+1)}},
-{name:'딸꾹',cat:'유머',e:'🤭',fn:c=>{for(let k=0;k<2;k++){let g=c.createGain();g.gain.setValueAtTime(0,c.currentTime+k*.4);g.gain.linearRampToValueAtTime(.5,c.currentTime+k*.4+.02);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+k*.4+.15);g.connect(c.destination);let o=c.createOscillator();o.type='sine';o.frequency.setValueAtTime(300,c.currentTime+k*.4);o.frequency.exponentialRampToValueAtTime(150,c.currentTime+k*.4+.15);o.connect(g);o.start(c.currentTime+k*.4);o.stop(c.currentTime+k*.4+.15)}}},
-{name:'찰싹',cat:'유머',e:'👋',fn:c=>{let g=c.createGain();g.gain.setValueAtTime(.6,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.12);g.connect(c.destination);let b=c.createBuffer(1,c.sampleRate*.12,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,2);let s=c.createBufferSource();s.buffer=b;let f=c.createBiquadFilter();f.type='bandpass';f.frequency.value=1800;f.Q.value=1;s.connect(f);f.connect(g);s.start()}},
-{name:'꽥',cat:'유머',e:'🦆',fn:c=>{let g=c.createGain();g.gain.setValueAtTime(.4,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.25);g.connect(c.destination);let o=c.createOscillator();o.type='square';o.frequency.setValueAtTime(600,c.currentTime);o.frequency.exponentialRampToValueAtTime(300,c.currentTime+.25);let f=c.createBiquadFilter();f.type='bandpass';f.frequency.value=800;f.Q.value=2;o.connect(f);f.connect(g);o.start();o.stop(c.currentTime+.25)}},
-// 악기
-{name:'피아노 도',cat:'악기',e:'🎹',fn:c=>{let g=c.createGain();g.gain.setValueAtTime(.5,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+1.2);g.connect(c.destination);[261.6,523.2,784.9].forEach((f,i)=>{let o=c.createOscillator();o.type='sine';o.frequency.value=f;let og=c.createGain();og.gain.value=[1,.5,.25][i];o.connect(og);og.connect(g);o.start();o.stop(c.currentTime+1.2)})}},
-{name:'드럼 킥',cat:'악기',e:'🥁',fn:c=>{let g=c.createGain();g.gain.setValueAtTime(1,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.4);g.connect(c.destination);let o=c.createOscillator();o.type='sine';o.frequency.setValueAtTime(150,c.currentTime);o.frequency.exponentialRampToValueAtTime(40,c.currentTime+.15);o.connect(g);o.start();o.stop(c.currentTime+.4)}},
-{name:'스네어',cat:'악기',e:'🪘',fn:c=>{let g=c.createGain();g.gain.setValueAtTime(.6,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.2);g.connect(c.destination);let b=c.createBuffer(1,c.sampleRate*.2,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;let s=c.createBufferSource();s.buffer=b;let f=c.createBiquadFilter();f.type='bandpass';f.frequency.value=2000;f.Q.value=.7;s.connect(f);f.connect(g);s.start()}},
-{name:'심벌즈',cat:'악기',e:'🎵',fn:c=>{let g=c.createGain();g.gain.setValueAtTime(.3,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.6);g.connect(c.destination);let b=c.createBuffer(1,c.sampleRate*.6,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;let s=c.createBufferSource();s.buffer=b;let f=c.createBiquadFilter();f.type='highpass';f.frequency.value=8000;s.connect(f);f.connect(g);s.start()}},
-{name:'기타 리프',cat:'악기',e:'🎸',fn:c=>osc(c,'sawtooth',[220,293,330,370,330,293],.1,.3)},
-{name:'트럼펫',cat:'악기',e:'🎺',fn:c=>chord(c,'sawtooth',[523,659,784],.5,.4)},
-{name:'베이스 드롭',cat:'악기',e:'🔊',fn:c=>sweep(c,'sine',80,40,.8,.7)},
-{name:'벨',cat:'악기',e:'🔔',fn:c=>{let g=c.createGain();g.gain.setValueAtTime(.5,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+1.5);g.connect(c.destination);[1047,2093,3136].forEach((f,i)=>{let o=c.createOscillator();o.type='sine';o.frequency.value=f;let og=c.createGain();og.gain.value=[1,.4,.2][i];o.connect(og);og.connect(g);o.start();o.stop(c.currentTime+1.5)})}},
-{name:'하프',cat:'악기',e:'🪗',fn:c=>melody(c,'sine',[[523,.4,0],[659,.35,.12],[784,.3,.22],[988,.3,.32],[1175,.35,.42],[1319,.4,.52]])},
-{name:'마림바',cat:'악기',e:'🎵',fn:c=>melody(c,'sine',[[523,.3,0],[784,.3,.2],[1047,.3,.4],[784,.2,.6],[523,.4,.8]])},
-{name:'플루트',cat:'악기',e:'🎶',fn:c=>{let g=c.createGain();g.gain.setValueAtTime(0,c.currentTime);g.gain.linearRampToValueAtTime(.25,c.currentTime+.08);g.gain.setValueAtTime(.25,c.currentTime+.5);g.gain.linearRampToValueAtTime(0,c.currentTime+.7);g.connect(c.destination);let o=c.createOscillator();o.type='sine';o.frequency.value=880;let lfo=c.createOscillator();let lg=c.createGain();lg.gain.value=5;lfo.frequency.value=6;lfo.connect(lg);lg.connect(o.frequency);o.connect(g);lfo.start();o.start();lfo.stop(c.currentTime+.7);o.stop(c.currentTime+.7)}},
-{name:'신디사이저',cat:'악기',e:'🎛️',fn:c=>chord(c,'sawtooth',[110,138,165,220],.6,.2)},
-{name:'전자 드럼',cat:'악기',e:'🥁',fn:c=>{[0,200,400].forEach(t=>setTimeout(()=>{let g=c.createGain();g.gain.setValueAtTime(.8,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.15);g.connect(c.destination);let o=c.createOscillator();o.type='sine';o.frequency.setValueAtTime(200,c.currentTime);o.frequency.exponentialRampToValueAtTime(50,c.currentTime+.1);o.connect(g);o.start();o.stop(c.currentTime+.15);},t))}},
-{name:'탬버린',cat:'악기',e:'🪘',fn:c=>{for(let k=0;k<3;k++){let g=c.createGain();g.gain.setValueAtTime(.25,c.currentTime+k*.12);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+k*.12+.1);g.connect(c.destination);let b=c.createBuffer(1,c.sampleRate*.1,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;let s=c.createBufferSource();s.buffer=b;let f=c.createBiquadFilter();f.type='highpass';f.frequency.value=5000;s.connect(f);f.connect(g);s.start(c.currentTime+k*.12)}}},
-{name:'드럼롤',cat:'악기',e:'🥁',fn:c=>{for(let k=0;k<16;k++)setTimeout(()=>{let g=c.createGain();g.gain.setValueAtTime(.3,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.04);g.connect(c.destination);let b=c.createBuffer(1,c.sampleRate*.04,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,1.5);let s=c.createBufferSource();s.buffer=b;let f=c.createBiquadFilter();f.type='bandpass';f.frequency.value=2000;s.connect(f);f.connect(g);s.start();},k*50)}},
-{name:'글리산도',cat:'악기',e:'🎼',fn:c=>sweep(c,'sine',261,1047,.5,.3)},
-{name:'핸드팬',cat:'악기',e:'🫧',fn:c=>melody(c,'sine',[[440,.4,0],[554,.3,.45],[659,.3,.8],[554,.4,1.1]])},
-// 동물
-{name:'개 짖음',cat:'동물',e:'🐶',fn:c=>{[[200,150,0],[220,160,.35]].forEach(([s,e,d])=>{let g=c.createGain();g.gain.setValueAtTime(0,c.currentTime+d);g.gain.linearRampToValueAtTime(.5,c.currentTime+d+.05);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+d+.25);g.connect(c.destination);let o=c.createOscillator();o.type='sawtooth';o.frequency.setValueAtTime(s,c.currentTime+d);o.frequency.exponentialRampToValueAtTime(e,c.currentTime+d+.25);let f=c.createBiquadFilter();f.type='bandpass';f.frequency.value=600;f.Q.value=2;o.connect(f);f.connect(g);o.start(c.currentTime+d);o.stop(c.currentTime+d+.25)})}},
-{name:'고양이',cat:'동물',e:'🐱',fn:c=>sweep(c,'sine',700,650,.7,.2)},
-{name:'개구리',cat:'동물',e:'🐸',fn:c=>{for(let k=0;k<2;k++){let g=c.createGain();g.gain.setValueAtTime(.3,c.currentTime+k*.2);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+k*.2+.1);g.connect(c.destination);let o=c.createOscillator();o.type='square';o.frequency.setValueAtTime(300,c.currentTime+k*.2);o.frequency.exponentialRampToValueAtTime(180,c.currentTime+k*.2+.1);o.connect(g);o.start(c.currentTime+k*.2);o.stop(c.currentTime+k*.2+.1)}}},
-{name:'올빼미',cat:'동물',e:'🦉',fn:c=>{[[350,320,0],[350,320,.4]].forEach(([s,e,d])=>{let g=c.createGain();g.gain.setValueAtTime(0,c.currentTime+d);g.gain.linearRampToValueAtTime(.2,c.currentTime+d+.05);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+d+.25);g.connect(c.destination);let o=c.createOscillator();o.type='sine';o.frequency.setValueAtTime(s,c.currentTime+d);o.frequency.exponentialRampToValueAtTime(e,c.currentTime+d+.25);o.connect(g);o.start(c.currentTime+d);o.stop(c.currentTime+d+.25)})}},
-{name:'벌',cat:'동물',e:'🐝',fn:c=>{let g=c.createGain();g.gain.setValueAtTime(0,c.currentTime);g.gain.linearRampToValueAtTime(.08,c.currentTime+.1);g.gain.setValueAtTime(.08,c.currentTime+.7);g.gain.linearRampToValueAtTime(0,c.currentTime+.9);g.connect(c.destination);let o=c.createOscillator();o.type='sawtooth';o.frequency.value=220;let lfo=c.createOscillator();let lg=c.createGain();lg.gain.value=20;lfo.frequency.value=8;lfo.connect(lg);lg.connect(o.frequency);let f=c.createBiquadFilter();f.type='bandpass';f.frequency.value=800;o.connect(f);f.connect(g);lfo.start();o.start();lfo.stop(c.currentTime+.9);o.stop(c.currentTime+.9)}},
-{name:'말 발굽',cat:'동물',e:'🐴',fn:c=>{for(let k=0;k<4;k++){let g=c.createGain();g.gain.setValueAtTime(.4,c.currentTime+k*.1);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+k*.1+.08);g.connect(c.destination);let b=c.createBuffer(1,c.sampleRate*.08,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,1.5);let s=c.createBufferSource();s.buffer=b;let f=c.createBiquadFilter();f.type='lowpass';f.frequency.value=1500;s.connect(f);f.connect(g);s.start(c.currentTime+k*.1)}}},
-{name:'공룡',cat:'동물',e:'🦖',fn:c=>{let g=c.createGain();g.gain.setValueAtTime(0,c.currentTime);g.gain.linearRampToValueAtTime(.7,c.currentTime+.1);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+1);g.connect(c.destination);let o=c.createOscillator();o.type='sawtooth';o.frequency.setValueAtTime(60,c.currentTime);o.frequency.exponentialRampToValueAtTime(30,c.currentTime+.5);let f=c.createBiquadFilter();f.type='lowpass';f.frequency.value=400;o.connect(f);f.connect(g);o.start();o.stop(c.currentTime+1)}},
-{name:'돌고래',cat:'동물',e:'🐬',fn:c=>sweep(c,'sine',1200,2400,.3,.15)},
-{name:'사자',cat:'동물',e:'🦁',fn:c=>{let g=c.createGain();g.gain.setValueAtTime(0,c.currentTime);g.gain.linearRampToValueAtTime(.8,c.currentTime+.2);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+1.2);g.connect(c.destination);let o=c.createOscillator();o.type='sawtooth';o.frequency.setValueAtTime(80,c.currentTime);o.frequency.exponentialRampToValueAtTime(40,c.currentTime+.8);let lfo=c.createOscillator();let lg=c.createGain();lg.gain.value=15;lfo.frequency.value=4;lfo.connect(lg);lg.connect(o.frequency);let f=c.createBiquadFilter();f.type='lowpass';f.frequency.value=500;o.connect(f);f.connect(g);lfo.start();o.start();lfo.stop(c.currentTime+1.2);o.stop(c.currentTime+1.2)}},
-{name:'원숭이',cat:'동물',e:'🐒',fn:c=>{[600,800,600,500,600,900,700].forEach((f,i)=>{let g=c.createGain();g.gain.setValueAtTime(.2,c.currentTime+i*.1);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+i*.1+.12);g.connect(c.destination);let o=c.createOscillator();o.type='sine';o.frequency.value=f;o.connect(g);o.start(c.currentTime+i*.1);o.stop(c.currentTime+i*.1+.12)})}},
-{name:'늑대 울음',cat:'동물',e:'🐺',fn:c=>{let g=c.createGain();g.gain.setValueAtTime(0,c.currentTime);g.gain.linearRampToValueAtTime(.4,c.currentTime+.3);g.gain.setValueAtTime(.4,c.currentTime+.8);g.gain.linearRampToValueAtTime(0,c.currentTime+1.4);g.connect(c.destination);let o=c.createOscillator();o.type='sawtooth';o.frequency.setValueAtTime(180,c.currentTime);o.frequency.exponentialRampToValueAtTime(600,c.currentTime+.5);o.frequency.exponentialRampToValueAtTime(300,c.currentTime+1.4);let f=c.createBiquadFilter();f.type='bandpass';f.frequency.value=800;f.Q.value=1;o.connect(f);f.connect(g);o.start();o.stop(c.currentTime+1.4)}},
-{name:'코끼리',cat:'동물',e:'🐘',fn:c=>{let g=c.createGain();g.gain.setValueAtTime(0,c.currentTime);g.gain.linearRampToValueAtTime(.5,c.currentTime+.1);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+1);g.connect(c.destination);let o=c.createOscillator();o.type='sawtooth';o.frequency.setValueAtTime(200,c.currentTime);o.frequency.exponentialRampToValueAtTime(400,c.currentTime+.3);o.frequency.exponentialRampToValueAtTime(100,c.currentTime+1);let f=c.createBiquadFilter();f.type='lowpass';f.frequency.value=600;o.connect(f);f.connect(g);o.start();o.stop(c.currentTime+1)}},
-{name:'고래',cat:'동물',e:'🐋',fn:c=>sweep(c,'sine',300,80,1.5,.2)},
-{name:'곰',cat:'동물',e:'🐻',fn:c=>{let g=c.createGain();g.gain.setValueAtTime(0,c.currentTime);g.gain.linearRampToValueAtTime(.6,c.currentTime+.15);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.8);g.connect(c.destination);let o=c.createOscillator();o.type='sawtooth';o.frequency.setValueAtTime(90,c.currentTime);o.frequency.exponentialRampToValueAtTime(55,c.currentTime+.5);let f=c.createBiquadFilter();f.type='lowpass';f.frequency.value=500;o.connect(f);f.connect(g);o.start();o.stop(c.currentTime+.8)}},
-{name:'앵무새',cat:'동물',e:'🦜',fn:c=>{[1200,1500,1200,1800,1500].forEach((f,i)=>{let g=c.createGain();g.gain.setValueAtTime(.15,c.currentTime+i*.1);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+i*.1+.1);g.connect(c.destination);let o=c.createOscillator();o.type='sine';o.frequency.value=f;o.connect(g);o.start(c.currentTime+i*.1);o.stop(c.currentTime+i*.1+.1)})}},
-{name:'닭',cat:'동물',e:'🐓',fn:c=>melody(c,'sawtooth',[[400,.08,0],[500,.08,.09],[400,.08,.18],[600,.15,.27],[400,.2,.43]])},
-// SF
-{name:'UFO',cat:'SF',e:'🛸',fn:c=>{let g=c.createGain();g.gain.setValueAtTime(.2,c.currentTime);g.gain.linearRampToValueAtTime(0,c.currentTime+1.2);g.connect(c.destination);let o=c.createOscillator();o.type='sine';o.frequency.value=400;let lfo=c.createOscillator();let lg=c.createGain();lg.gain.value=50;lfo.frequency.value=5;lfo.connect(lg);lg.connect(o.frequency);o.connect(g);lfo.start();o.start();lfo.stop(c.currentTime+1.2);o.stop(c.currentTime+1.2)}},
-{name:'포털',cat:'SF',e:'🌌',fn:c=>{sweep(c,'sine',200,800,.4,.4);setTimeout(()=>sweep(c,'sine',800,200,.8,.3),400)}},
-{name:'로봇',cat:'SF',e:'🤖',fn:c=>osc(c,'square',[100,150,200,150,100],.1,.3)},
-{name:'텔레포트',cat:'SF',e:'✨',fn:c=>noise(c,.2,5000,.5)},
-{name:'레이더',cat:'SF',e:'📡',fn:c=>{for(let k=0;k<3;k++){let g=c.createGain();g.gain.setValueAtTime(.3,c.currentTime+k*.4);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+k*.4+.2);g.connect(c.destination);let o=c.createOscillator();o.type='sine';o.frequency.value=880;o.connect(g);o.start(c.currentTime+k*.4);o.stop(c.currentTime+k*.4+.2)}}},
-{name:'블랙홀',cat:'SF',e:'🕳️',fn:c=>sweep(c,'sawtooth',4000,20,1.5,.5)},
-{name:'에너지 충전',cat:'SF',e:'⚡',fn:c=>sweep(c,'sine',100,2000,1,.3)},
-{name:'워프 드라이브',cat:'SF',e:'🚀',fn:c=>sweep(c,'sawtooth',60,8000,.6,.5)},
-{name:'AI 부팅',cat:'SF',e:'🤖',fn:c=>{for(let k=0;k<8;k++){let g=c.createGain();g.gain.setValueAtTime(.15,c.currentTime+k*.1);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+k*.1+.08);g.connect(c.destination);let o=c.createOscillator();o.type='square';o.frequency.value=200+k*100;o.connect(g);o.start(c.currentTime+k*.1);o.stop(c.currentTime+k*.1+.08)}}},
-{name:'홀로그램',cat:'SF',e:'🔮',fn:c=>{let g=c.createGain();g.gain.setValueAtTime(0,c.currentTime);g.gain.linearRampToValueAtTime(.2,c.currentTime+.15);g.gain.setValueAtTime(.2,c.currentTime+.6);g.gain.linearRampToValueAtTime(0,c.currentTime+.8);g.connect(c.destination);let o=c.createOscillator();o.type='sine';o.frequency.value=880;let lfo=c.createOscillator();let lg=c.createGain();lg.gain.value=400;lfo.frequency.value=3;lfo.connect(lg);lg.connect(o.frequency);o.connect(g);lfo.start();o.start();lfo.stop(c.currentTime+.8);o.stop(c.currentTime+.8)}},
-{name:'나노봇',cat:'SF',e:'🔬',fn:c=>{for(let k=0;k<10;k++)setTimeout(()=>sweep(c,'sine',2000+Math.random()*1000,3000+Math.random()*1000,.08,.1),k*80)}},
-{name:'타임머신',cat:'SF',e:'⏳',fn:c=>{for(let k=0;k<6;k++){let g=c.createGain();g.gain.setValueAtTime(.15,c.currentTime+k*.15);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+k*.15+.1);g.connect(c.destination);let o=c.createOscillator();o.type='sine';o.frequency.value=200+k*150;o.connect(g);o.start(c.currentTime+k*.15);o.stop(c.currentTime+k*.15+.1)}}},
-// UI
-{name:'알림',cat:'UI',e:'🔔',fn:c=>osc(c,'sine',[880,1108],.12,.25)},
-{name:'성공',cat:'UI',e:'✅',fn:c=>osc(c,'sine',[523,659,784,1047],.08,.2)},
-{name:'에러',cat:'UI',e:'❌',fn:c=>osc(c,'sawtooth',[300,250],.15,.3)},
-{name:'클릭',cat:'UI',e:'🖱️',fn:c=>noise(c,.06,5000,.3)},
-{name:'타이핑',cat:'UI',e:'⌨️',fn:c=>{for(let k=0;k<5;k++)setTimeout(()=>noise(c,.04,3000,.15),k*60)}},
-{name:'스와이프',cat:'UI',e:'👆',fn:c=>sweep(c,'sine',300,800,.15,.2)},
-{name:'팝업',cat:'UI',e:'💬',fn:c=>osc(c,'sine',[784,988],.1,.2)},
-{name:'삭제',cat:'UI',e:'🗑️',fn:c=>sweep(c,'sine',400,150,.25,.3)},
-{name:'저장',cat:'UI',e:'💾',fn:c=>osc(c,'sine',[523,784],.08,.2)},
-{name:'카운트다운',cat:'UI',e:'⏱️',fn:c=>{for(let k=0;k<3;k++){let g=c.createGain();g.gain.setValueAtTime(.3,c.currentTime+k*.5);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+k*.5+.15);g.connect(c.destination);let o=c.createOscillator();o.type='sine';o.frequency.value=k===2?1046:523;o.connect(g);o.start(c.currentTime+k*.5);o.stop(c.currentTime+k*.5+.15)}}},
-{name:'토글',cat:'UI',e:'🔀',fn:c=>sweep(c,'sine',440,660,.08,.3)},
-{name:'로딩',cat:'UI',e:'⏳',fn:c=>{for(let k=0;k<4;k++)setTimeout(()=>{let g=c.createGain();g.gain.setValueAtTime(.15,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.12);g.connect(c.destination);let o=c.createOscillator();o.type='sine';o.frequency.value=600+k*100;o.connect(g);o.start();o.stop(c.currentTime+.12);},k*200)}},
-{name:'경고음',cat:'UI',e:'⚠️',fn:c=>osc(c,'sawtooth',[440,440,440],.12,.3)},
-{name:'메시지 수신',cat:'UI',e:'💬',fn:c=>osc(c,'sine',[880,1108,880],.08,.2)},
-{name:'카메라 셔터',cat:'UI',e:'📷',fn:c=>{noise(c,.06,8000,.5);setTimeout(()=>noise(c,.04,6000,.3),80)}},
-{name:'전화벨',cat:'UI',e:'📱',fn:c=>{for(let k=0;k<2;k++)setTimeout(()=>{let g=c.createGain();g.gain.setValueAtTime(.3,c.currentTime);g.gain.setValueAtTime(.3,c.currentTime+.3);g.gain.linearRampToValueAtTime(0,c.currentTime+.4);g.connect(c.destination);[880,1100].forEach(f=>{let o=c.createOscillator();o.type='sine';o.frequency.value=f;o.connect(g);o.start();o.stop(c.currentTime+.4)});},k*700)}},
-// 밈🇰🇷
-{name:'어이쿠',cat:'밈🇰🇷',e:'🙈',fn:c=>osc(c,'sawtooth',[600,500,400,350],.08,.3)},
-{name:'대박',cat:'밈🇰🇷',e:'🤩',fn:c=>osc(c,'sine',[523,784,1047,1568],.07,.3)},
-{name:'헐',cat:'밈🇰🇷',e:'😲',fn:c=>sweep(c,'sine',800,200,.4,.35)},
-{name:'실화냐',cat:'밈🇰🇷',e:'🫢',fn:c=>osc(c,'square',[440,330,440,330],.1,.25)},
-{name:'빠라빠빠',cat:'밈🇰🇷',e:'🍟',fn:c=>melody(c,'sine',[[392,.1,0],[440,.1,.1],[392,.1,.2],[330,.15,.3],[349,.1,.45],[392,.1,.55]])},
-{name:'아 진짜',cat:'밈🇰🇷',e:'😤',fn:c=>sweep(c,'sawtooth',300,150,.5,.4)},
-{name:'오 마이 갓',cat:'밈🇰🇷',e:'😇',fn:c=>osc(c,'sine',[440,554,659,880,659,554,440],.08,.2)},
-{name:'칼퇴',cat:'밈🇰🇷',e:'🏃',fn:c=>melody(c,'square',[[880,.08,0],[784,.08,.09],[659,.08,.18],[523,.2,.27]])},
-{name:'갓생',cat:'밈🇰🇷',e:'✨',fn:c=>osc(c,'sine',[523,659,784,988,1047],.07,.3)},
-{name:'ㅋㅋㅋ',cat:'밈🇰🇷',e:'😹',fn:c=>{for(let k=0;k<5;k++)setTimeout(()=>{let g=c.createGain();g.gain.setValueAtTime(.2,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.1);g.connect(c.destination);let o=c.createOscillator();o.type='sine';o.frequency.value=400+k*30;o.connect(g);o.start();o.stop(c.currentTime+.1);},k*100)}},
-{name:'레전드',cat:'밈🇰🇷',e:'👑',fn:c=>melody(c,'sine',[[523,.08,0],[659,.08,.1],[784,.08,.2],[1047,.08,.3],[1319,.08,.4],[1047,.08,.5],[784,.2,.6]])},
-{name:'노답',cat:'밈🇰🇷',e:'🤦',fn:c=>osc(c,'sawtooth',[330,311,294,277,261],.1,.3)},
-{name:'존맛탱',cat:'밈🇰🇷',e:'😍',fn:c=>melody(c,'sine',[[523,.1,0],[659,.1,.12],[784,.15,.25],[659,.1,.42],[784,.2,.55]])},
-{name:'핵꿀잼',cat:'밈🇰🇷',e:'🤣',fn:c=>{for(let k=0;k<6;k++)setTimeout(()=>sweep(c,'sine',400+k*50,600+k*50,.12,.2),k*120)}},
-{name:'갑분싸',cat:'밈🇰🇷',e:'🥶',fn:c=>osc(c,'sine',[440,415,392,370,349],.15,.2)},
-{name:'킹받네',cat:'밈🇰🇷',e:'😡',fn:c=>noise(c,.3,1000,.7)},
-{name:'TMI',cat:'밈🇰🇷',e:'💬',fn:c=>osc(c,'square',[660,550,660,440,660],.08,.2)},
-// 밈🌎
-{name:'Bruh',cat:'밈🌎',e:'😐',fn:c=>sweep(c,'sawtooth',130,80,.5,.4)},
-{name:'Oof',cat:'밈🌎',e:'😬',fn:c=>osc(c,'sawtooth',[300,200,150],.08,.35)},
-{name:'Ta-da!',cat:'밈🌎',e:'🎉',fn:c=>osc(c,'sine',[523,659,784,1047,784,1047,1319],.07,.3)},
-{name:'Sad Trombone',cat:'밈🌎',e:'🥺',fn:c=>osc(c,'sawtooth',[466,440,415,392,370,349],.12,.35)},
-{name:'Nyan Cat',cat:'밈🌎',e:'🌈',fn:c=>osc(c,'square',[784,880,988,880,784,659,698,784],.1,.2)},
-{name:'Vine Boom',cat:'밈🌎',e:'💀',fn:c=>sweep(c,'sine',200,40,.4,.8)},
-{name:'Oh No',cat:'밈🌎',e:'😰',fn:c=>osc(c,'sawtooth',[440,392,349,330,294],.12,.3)},
-{name:'GTA Wasted',cat:'밈🌎',e:'💔',fn:c=>melody(c,'sawtooth',[[330,.3,0],[294,.3,.35],[261,.8,.7]])},
-{name:'Air Horn',cat:'밈🌎',e:'📣',fn:c=>chord(c,'sawtooth',[233,277,349],.8,.5)},
-{name:'Dramatic',cat:'밈🌎',e:'🎭',fn:c=>melody(c,'sawtooth',[[196,.15,0],[220,.15,.17],[246,.3,.35]])},
-{name:'Sheesh',cat:'밈🌎',e:'😤',fn:c=>sweep(c,'sawtooth',100,800,.4,.4)},
-{name:'Rizz',cat:'밈🌎',e:'😎',fn:c=>melody(c,'sine',[[392,.1,0],[494,.1,.12],[587,.1,.24],[494,.1,.36],[659,.2,.48]])},
-{name:'No cap',cat:'밈🌎',e:'🧢',fn:c=>osc(c,'square',[440,330,220],.12,.3)},
-{name:'Slay',cat:'밈🌎',e:'💅',fn:c=>melody(c,'sine',[[784,.1,0],[988,.1,.12],[1175,.1,.24],[988,.1,.36],[1175,.2,.48]])},
-{name:'Sigma',cat:'밈🌎',e:'🗿',fn:c=>sweep(c,'sine',200,60,.5,.5)},
-{name:'W',cat:'밈🌎',e:'🏆',fn:c=>osc(c,'sine',[523,659,784,1047,1319],.08,.3)},
-{name:'L',cat:'밈🌎',e:'😔',fn:c=>osc(c,'sawtooth',[392,330,294,261],.12,.35)},
-{name:'Touch grass',cat:'밈🌎',e:'🌿',fn:c=>noiseEnv(c,.6,4000,.1,.4,.12)},
-// 밈🇯🇵
-{name:'なんでやねん',cat:'밈🇯🇵',e:'🤦',fn:c=>osc(c,'square',[440,330,220,330,440],.09,.3)},
-{name:'草',cat:'밈🇯🇵',e:'🌿',fn:c=>osc(c,'sine',[523,659,784,659,523],.08,.2)},
-{name:'ドン！',cat:'밈🇯🇵',e:'🥁',fn:c=>{noise(c,.4,200,.9);osc(c,'sine',[80],.4,.5)}},
-{name:'やばい',cat:'밈🇯🇵',e:'😱',fn:c=>sweep(c,'sine',300,1200,.3,.3)},
-{name:'うわあ',cat:'밈🇯🇵',e:'😩',fn:c=>sweep(c,'sawtooth',400,150,.6,.3)},
-{name:'ニコニコ',cat:'밈🇯🇵',e:'😊',fn:c=>melody(c,'square',[[659,.1,0],[784,.1,.12],[880,.1,.24],[784,.1,.36],[659,.2,.48]])},
-{name:'終わった',cat:'밈🇯🇵',e:'⚰️',fn:c=>osc(c,'sawtooth',[330,294,261,246],.15,.35)},
-{name:'かわいい',cat:'밈🇯🇵',e:'🌸',fn:c=>melody(c,'sine',[[1047,.08,0],[1319,.08,.1],[1568,.08,.2],[1319,.08,.3],[1047,.15,.4]])},
-{name:'ｷﾀｰ！',cat:'밈🇯🇵',e:'🎊',fn:c=>melody(c,'square',[[523,.08,0],[659,.08,.09],[784,.08,.18],[1047,.08,.27],[1319,.2,.36]])},
-{name:'マジか',cat:'밈🇯🇵',e:'😯',fn:c=>sweep(c,'sine',600,200,.4,.3)},
-{name:'エモい',cat:'밈🇯🇵',e:'🥹',fn:c=>melody(c,'sine',[[330,.2,0],[392,.2,.22],[494,.2,.45],[392,.2,.68],[330,.3,.9]])},
-{name:'草生える',cat:'밈🇯🇵',e:'🌾',fn:c=>{for(let k=0;k<4;k++)setTimeout(()=>sweep(c,'sine',500+k*50,700+k*50,.1,.15),k*100)}},
-{name:'神ゲー',cat:'밈🇯🇵',e:'🎮',fn:c=>melody(c,'square',[[659,.08,0],[784,.08,.1],[988,.08,.2],[1175,.08,.3],[988,.08,.4],[784,.1,.5]])},
-{name:'詰んだ',cat:'밈🇯🇵',e:'♟️',fn:c=>osc(c,'sawtooth',[440,415,392,370],.15,.35)},
-{name:'尊い',cat:'밈🇯🇵',e:'🌸',fn:c=>melody(c,'sine',[[784,.15,0],[988,.15,.17],[1175,.15,.35],[988,.15,.53],[784,.2,.71]])},
-];
+// ── TTS (Web Speech API) ─────────────────────────────
+function speak(text){
+  if(!window.speechSynthesis)return;
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text);
+  u.lang='ko-KR';u.rate=1.1;u.pitch=1.1;u.volume=1;
+  // 한국어 목소리 우선 선택
+  const voices=speechSynthesis.getVoices();
+  const koVoice=voices.find(v=>v.lang.startsWith('ko'));
+  if(koVoice)u.voice=koVoice;
+  speechSynthesis.speak(u);
+}
 
+// ── 앱 상태 ──────────────────────────────────────────
+let ctx=null,filtered=[...SOUNDS],filterCat=null,idx=0;
+let donateOn=false,donateAgreed=false,clickCount=0;
 const KAKAO_LINK='https://qr.kakaopay.com/Fa8v84E3c';
-let ctx=null,filtered=[...SOUNDS],filterCat=null,idx=0,donateOn=false,donateAgreed=false,clickCount=0;
+
 function getCtx(){if(!ctx)ctx=new(window.AudioContext||window.webkitAudioContext)();if(ctx.state==='suspended')ctx.resume();return ctx}
 function pickRandom(ex){if(filtered.length===1)return 0;let n;do{n=Math.floor(Math.random()*filtered.length)}while(n===ex);return n}
-function render(){const s=filtered[idx];$('btnFace').textContent=s.e;$('infoCat').textContent=s.cat;$('infoName').textContent=s.name}
+
+function render(){
+  const s=filtered[idx];
+  $('btnFace').textContent=s.e;
+  $('infoCat').textContent=s.cat;
+  $('infoName').textContent=s.name;
+}
+
 function play(){
   const s=filtered[idx];if(!s)return;
-  try{s.fn(getCtx())}catch(e){}
+  // speech: 접두어 처리
+  if(typeof s.fn==='string'&&s.fn.startsWith('speech:')){
+    speak(s.fn.slice(7));
+  } else {
+    try{s.fn(getCtx())}catch(e){}
+  }
   if(navigator.vibrate)navigator.vibrate(25);
   const ring=$('rippleRing');ring.classList.remove('go');void ring.offsetWidth;ring.classList.add('go');
   const btn=$('mainBtn');btn.classList.add('pressed');setTimeout(()=>btn.classList.remove('pressed'),120);
   if(donateOn&&donateAgreed){clickCount++;$('clickCount').textContent=clickCount;$('totalAmount').textContent=(clickCount*10).toLocaleString()}
 }
+
 function nextSound(){idx=pickRandom(idx);render()}
+
 function buildCats(){
   const cats=['전체',...new Set(SOUNDS.map(s=>s.cat))];
   const wrap=$('catWrap');wrap.innerHTML='';
-  cats.forEach(cat=>{const b=document.createElement('button');b.className='cat-btn'+(cat===(filterCat||'전체')?' active':'');b.textContent=cat;b.onclick=()=>{filterCat=cat==='전체'?null:cat;filtered=filterCat?SOUNDS.filter(s=>s.cat===filterCat):[...SOUNDS];idx=Math.floor(Math.random()*filtered.length);buildCats();render()};wrap.appendChild(b)});
+  cats.forEach(cat=>{
+    const b=document.createElement('button');
+    b.className='cat-btn'+(cat===(filterCat||'전체')?' active':'');
+    b.textContent=cat;
+    b.onclick=()=>{filterCat=cat==='전체'?null:cat;filtered=filterCat?SOUNDS.filter(s=>s.cat===filterCat):[...SOUNDS];idx=Math.floor(Math.random()*filtered.length);buildCats();render()};
+    wrap.appendChild(b);
+  });
 }
-function handleDonateToggle(){if(donateOn){donateOn=false;$('tog').classList.remove('on');$('togLabel').textContent='후원하기';$('donateStatus').classList.remove('visible')}else{if(!donateAgreed)$('modalBg').classList.add('open');else enableDonate()}}
+
+// ── 후원 ─────────────────────────────────────────────
+function handleDonateToggle(){
+  if(donateOn){donateOn=false;$('tog').classList.remove('on');$('togLabel').textContent='후원하기';$('donateStatus').classList.remove('visible')}
+  else{if(!donateAgreed)$('modalBg').classList.add('open');else enableDonate()}
+}
 function agreeAndEnable(){donateAgreed=true;$('modalBg').classList.remove('open');enableDonate()}
 function enableDonate(){donateOn=true;$('tog').classList.add('on');$('togLabel').textContent='ON';$('donateStatus').classList.add('visible')}
 function cancelDonate(){$('modalBg').classList.remove('open')}
+function resetCount(){clickCount=0;$('clickCount').textContent=0;$('totalAmount').textContent=0}
+
 function sendDonation(){
   if(clickCount===0){alert('아직 클릭한 횟수가 없어요!\n버튼을 눌러보세요 😊');return}
   const amount=clickCount*10;
   const isMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   if(isMobile){
     window.open(KAKAO_LINK,'_blank');
-    setTimeout(()=>{
-      alert(`✅ 카카오페이 앱에서\n₩${amount.toLocaleString()} 을 입력해 송금해 주세요!\n(${clickCount}번 클릭 × 10원)`);
-      resetCount();
-    },800);
+    setTimeout(()=>{alert(`✅ 카카오페이에서\n₩${amount.toLocaleString()} 을 입력해 송금해 주세요!\n(${clickCount}번 클릭 × 10원)`);resetCount();},800);
   } else {
     $('qrAmount').textContent='₩'+amount.toLocaleString();
     $('qrHintAmount').textContent='₩'+amount.toLocaleString();
@@ -363,31 +222,35 @@ function sendDonation(){
     $('qrModalBg').classList.add('open');
   }
 }
-function resetCount(){clickCount=0;$('clickCount').textContent=0;$('totalAmount').textContent=0}
 function closeQRBtn(){$('qrModalBg').classList.remove('open');resetCount()}
 function closeQR(e){if(e.target===$('qrModalBg'))closeQRBtn()}
+
 function drawQR(url){
-  const canvas=$('qrCanvas');const ctx=canvas.getContext('2d');
+  const canvas=$('qrCanvas'),ctx2=canvas.getContext('2d');
   const size=180;canvas.width=size;canvas.height=size;
-  ctx.fillStyle='#fff';ctx.fillRect(0,0,size,size);
-  const script=document.createElement('script');
-  script.src='https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
-  script.onload=()=>{
-    canvas.width=size;canvas.height=size;
-    ctx.fillStyle='#fff';ctx.fillRect(0,0,size,size);
-    const tmp=document.createElement('div');
+  ctx2.fillStyle='#fff';ctx2.fillRect(0,0,size,size);
+  const doRender=()=>{
+    const tmp=document.createElement('div');tmp.style.display='none';document.body.appendChild(tmp);
     new QRCode(tmp,{text:url,width:size,height:size,colorDark:'#0f0f1a',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});
-    setTimeout(()=>{const img=tmp.querySelector('img')||tmp.querySelector('canvas');if(img){const i=new Image();i.onload=()=>ctx.drawImage(i,0,0,size,size);i.src=img.src||img.toDataURL();}},200);
+    setTimeout(()=>{
+      const el=tmp.querySelector('canvas')||tmp.querySelector('img');
+      if(el){const i=new Image();i.onload=()=>{ctx2.drawImage(i,0,0,size,size);};i.src=el.tagName==='CANVAS'?el.toDataURL():el.src;}
+      document.body.removeChild(tmp);
+    },300);
   };
-  if(window.QRCode){
-    canvas.width=size;canvas.height=size;
-    ctx.fillStyle='#fff';ctx.fillRect(0,0,size,size);
-    const tmp=document.createElement('div');
-    new QRCode(tmp,{text:url,width:size,height:size,colorDark:'#0f0f1a',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});
-    setTimeout(()=>{const img=tmp.querySelector('img')||tmp.querySelector('canvas');if(img){const i=new Image();i.onload=()=>ctx.drawImage(i,0,0,size,size);i.src=img.src||img.toDataURL();}},200);
-  } else {
-    document.head.appendChild(script);
+  if(window.QRCode){doRender();}
+  else{
+    const sc=document.createElement('script');
+    sc.src='https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+    sc.onload=doRender;document.head.appendChild(sc);
   }
+}
+
+// ── 초기화 ────────────────────────────────────────────
+// TTS 목소리 미리 로드
+if(window.speechSynthesis){
+  speechSynthesis.getVoices();
+  speechSynthesis.onvoiceschanged=()=>speechSynthesis.getVoices();
 }
 $('mainBtn').addEventListener('click',play);
 idx=Math.floor(Math.random()*SOUNDS.length);
