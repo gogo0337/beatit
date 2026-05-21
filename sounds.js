@@ -138,5 +138,7 @@ const SOUNDS = [
 {name:'칼퇴',           cat:'밈',     e:'🏃',  fn: 'speech:칼퇴가즈아'},
 {name:'야 이게 뭐야',   cat:'밈',     e:'😵',  fn: 'speech:예?'},
 {name:'대충 살자',      cat:'밈',     e:'🛋️', fn: 'speech:대충 살자'},
+{name:'쌰갈',      cat:'밈',     e:'🛋️', fn: 'speech:쌰갈'},
+{name:'저 됐어요',      cat:'밈',     e:'🛋️', fn: 'speech:저 됐어요'},
 
 ];
